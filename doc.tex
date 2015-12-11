@@ -1,0 +1,127 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{makeidx}
+\usepackage{url}
+ \title{Documentação - Escalonamento de {\it Jobs}}
+ \author{Fernando Barbosa Neto \and Jeferson de Oliveira Batista}
+ \date{03 de Novembro de 2015}
+\begin{document}
+ \maketitle
+ \newpage
+ 
+ \section{Introdução}
+  {\paragraph{} Este projeto visa ordenar {\it jobs} de forma a obter o menor custo possível. Serão explanadas os algoritmos de sequenciamento implementados, os quais são o {\it Beam search} e {\it least cost Branch and Bound}. }
+  {\paragraph{} Será ainda apresentado um estudo sobre {\it beam width}, seguido das técnicas de implementação dos algoritmos empregados. }
+  {\paragraph{} Após abordados os detalhes de implementação, há de ser disponibilizada uma análise comparativa entre os dois modos empregados. Serão avaliados tanto a qualidade da resposta final quanto à performance. }
+  
+ \newpage
+  
+ \section{{\it Beam Width}}
+  {\paragraph{} Para o estudo do beam width, foram realizados experimentos com o algoritmo Beam Search, mantendo o número \emph{n}
+  de jobs a ser escalonado fixo em 300 e variando-se o valor do beam width, com o objetivo de se avaliar a influência do beam width
+  sobre a qualidade da solução. O arquivo utilizado contendo os dados dos jobs é o teste.txt.}
+  {\paragraph{} O resultado dos experimentos está resumido na tabela a seguir: }
+  
+  \begin{table}[!h]
+\centering
+\caption{Análise do beam width}
+\label{my-label}
+\begin{tabular}{|l|l|}
+\hline
+Beam Width    & Multa ou Penalidade \\ \hline
+2             & 1704                \\ \hline
+5             & 1706                \\ \hline
+10            & 1695                \\ \hline
+15            & 1685                \\ \hline
+20            & 1692                \\ \hline
+30            & 1719                \\ \hline
+50            & 1707                \\ \hline
+70            & 1702                \\ \hline
+100           & 1694                \\ \hline
+120           & 1694                \\ \hline
+150           & 1717                \\ \hline
+\end{tabular}
+\end{table}
+
+{\paragraph{} Como conclusão desse pequeno experimento, podemos concluir que, para a base de dados presente em teste.txt, não
+vale a pena utilizar um valor muito elevado para o beam width, sendo que o melhor resultado alcançado ocorreu com beam width
+= 15 e penalidade de 1685. Porém, dado que entre as 30 melhores sequências presentes em dado momento no algoritmo de Beam Search
+estão presente as 15 melhores, como explicar tais resultados? A conclusão a que chegamos é que, como no início do algoritmo muitas
+sequências apresentam valores iguais de lowerbound (estimativa do melhor caso), sequências que são processadas mais tardiamente
+(relativas ao atendimento de jobs presentes mais abaixo na base de testes) podem tomar o lugar de sequências que são mais promissoras
+por caso de empate.}
+  
+ \newpage
+ 
+ \section{Implementação}  
+  {\paragraph{} As subseções a seguir tratarão sobre a implementação do programa, tanto dos algoritmos como a manipulação de dados de entrada e saída. }
+  
+  \subsection{Formatação de Entrada e Saída}
+   {\paragraph{} Após a compilação do programa, que pode ser feito através do comando {\tt make all} via terminal, a sua execução também se dará por argumento de linha de comando. O arquivo principal do programa, como também para tratamento das entradas, é o main.c}
+   {\paragraph{} A execução dos algoritmo ocorre através do seguinte uso: {\tt ./trab3 <n> <algoritmo>}, onde <n> é a quantidade de trabalhos a serem ordenados e <algoritmo> pode ser substituído por bs, para o {\it Beam search}, ou bb, para o {\it Least Cost Branch and Bound}. Uma pequena cadeia de if/else determina o fluxo dos dados aos módulos dos algoritmos correspondentes. Após o comando, é necessário entrar com as n linhas de {\it input} via stdin, as quais possuem os inteiros t, d e p, nessa ordem. t refere-se ao tempo de processamento do {\it job}, enquanto d e p são seu {\it deadline} e sua penalidade, respectivamente. }
+   {\paragraph{} Após o processamento dos dados no algoritmo desejado, o resultado é enviado para stdout no seguinte formato: {\tt c: j1 j2 ... jn}, onde j1,...,jn são os {\it jobs} ordenados, os quais seriam executados da esquerda para a direita, enquanto c é o custo dessa sequência. } 
+  
+  \subsection{{\it Beam search}}
+   {\paragraph{} A TAD {\it Beam Search} se encontra implementada nos arquivos beamsearch.c e, sua respectiva biblioteca, beamsearch.h.
+   Essa TAD faz uso de duas outras TADs, sendo {\it Sequencia} presente em sequencia.c e sequencia.h, e a TAD {\it SkewHeap} presente
+   em skewheap.c e skewheap.h.}
+   {\paragraph{} A TAD {\it Sequencia} é responsável por armazenar as informações de uma possível solução, ou seja, os jobs
+   que já foram processados (ou atendidos), os que ainda estão esperando, a multa que já foi paga, o tempo já transcorrido, além
+   de estimativas do melhor (lowerbound) e do pior custo (upperbound) que pode resultar da solução em andamento. Essa TAD também é responsável por gerar
+   toda a descendência de uma possível solução.}
+   {\paragraph{} A TAD {\it SkewHeap} funciona como uma estrutura de ordenação que armazena as possíveis soluções, tornando
+   possível que as \emph{w} melhores possíveis soluções, com base na estimativa do melhor custo, permaneçam a cada etapa do
+   algoritmo de Beam Search. Sendo que \emph{w} é o valor do beam width.}
+   {\paragraph{} A TAD {\it Beam Search} possui a função de assinatura \emph{BeamSearch *criarBeamSearch(int n, int **jobs, int width)},
+   responsável por inicializar a busca, sendo que \emph{n} é o número de jobs a ser escalonado, \emph{jobs} a matriz com os dados
+   dos jobs e \emph{width} o valor do beam width; a função \emph{void proxGeracao(BeamSearch *beam)}, responsável por gerar todos os descendentes
+   das possíveis soluções atuais; a função \emph{void podarGeracao(BeamSearch *beam)} que reduz o conjunto de possíveis soluções
+   apenas às \emph{w} melhores; a função \emph{void imprimirMelhor(BeamSearch *beam)} que imprime a melhor sequência do conjunto
+   atual de soluções e a função \emph{void liberarBeamSearch(BeamSearch *beam)} que libera a memória alocada para a Beam Search.}
+   {\paragraph{} O algoritmo de Beam Search funciona da seguinte forma, inicia-se com uma sequência que não possui nenhum job realizado,
+   então, a cada etapa do algoritmo, as sequências atuais geram todos os seus descendentes, mas apenas as \emph{w} melhores sequências
+   geradas permanecem. Esse processo é repetido \emph{n} vezes, sendo \emph{n} o número de jobs, sendo que a solução dada pelo
+   algoritmo é a melhor presente em seu conjunto final de sequências.}
+  \subsection{{\it Least Cost Branch and Bound}}
+   {\paragraph{} A implementação do {\it Least Cost Branch and Bound} pode ser encontrada nos arquivos branchbound.c e, sua respectiva biblioteca, branchbound.h. Esse algoritmo trabalha com uma abordagem {\it Back-tracking} com objetivo de identificar a resposta exata ao buscar o menor custo em todos caminhos possíveis, portanto é de complexidade O($n!$) sendo n o tamanho da entrada, porém com auxílio do menor custo já armazenado, evitando de percorrer de fato todos os caminhos possíveis. }
+   {\paragraph{} A função que faz a ligação das entradas e posteriormente com as saídas  na main.c e o módulo de tratamento do {\it Branch and Bound} é a que possui assinatura int bb(int n, int temp[], int deadline[], int multa[], int seq[], int c);, onde n é a quantidade de trabalhos, temp é o vetor dos tempos, deadline é o vetor de {\it deadlines}, multa é o vetor de penalidades, seq é o vetor que armazenará a sequência dos {\it jobs} já escalonados e c é o menor custo encontrado no {\it Beam search}. Esta função começará a tratar as arranjos dos sequenciamentos, selecionando o primeiro trabalho da sequência em análise. }
+   {\paragraph{} Ao iniciar o processo de {\it Branch and Bound}, a função bb explicada anteriormente faz chamada à função void buscaMenorCusto(int n, int tempo[], int deadline[], int multa[], int seq[], int ini, int visitado[], int atseq[]);, a qual dá procedimento à criação da sequência. Nesta função verifica se a sequência atual em andamento possui custo maior ou igual ao menor custo já encontrado pois, em caso positivo, evitaria processamento desnecessário. Observe que esse custo inicialmente é setado para o menor custo encontrado pelo {\it Beam search}, o qual retorna um custo razoável em tempo significativamente menor, colaborando no corte de sequência inúteis no {\it Least Cost Branch and Bound}. }
+   {\paragraph{} Há funções auxiliares às funções anteriormente explanadas e outras para {\it debug} presentes nos arquivos do módulo de {\it Branch and Bound}. Uma vez terminado o processo iniciado por bb, esta função retornará o menor custo da melhor sequência. Essa sequência pode ser obtida na leitura do parâmetro seq. A impressão do resultado é feita em main.c }
+  
+ \newpage
+ \section{Análise}	
+  {\paragraph{} Para medição e comparação dos tempos, foi utilizada a função {\tt time} do {\it bash} em um computador com a seguinte configuração: Notebook Dell Vostro 3460, com Sistema Operacional Ubuntu 15.04 64-bit, Memória de 5.7 GiB, processador Intel® Core™ i5-3230M CPU @ 2.60GHz x 4 e placa de vídeo GeForce GT 630M/PCIe/SSE2. No terminal foram rodados os seguintes comandos: {\tt time ./trab3 n bs} para o modo {\it Beam search} e {\tt time ./trab3 n bb} para o modo {\it Least Cost Branch and Bound}, sendo que o tempo a ser avaliado é o de \emph{user} e n é a quantidade de {\it jobs}.}
+  {\paragraph{} A Tabela 1 disposta a seguir traz um comparativo para os casos de teste analisados. O caso de teste 1 utilizou os dados contidos no arquivo entrada, enquanto os casos de teste 2, 3 e 4 utilizaram o mesmo arquivo para input, teste.txt, porém o primeiro utilizando as 11 primeiras linhas do arquivo, o segundo as 16 primeiras e o terceiro o arquivo inteiro, equivalendo ao total de 1000 trabalhos. }
+  
+\begin{table}[!h]
+\centering
+\caption{Análise de desempenho}
+\label{my-label}
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+Caso de teste & Quantidade de {\it jobs} & Custo bs & Tempo bs & Custo bb & Tempo bb \\ \hline
+1             & 3                          & 6                    & 0m0.000s            & 6                    & 0m0.000s            \\ \hline
+2             & 11                         & 2                    & 0m0.000s            & 1                    & 0m0.256s            \\ \hline
+3             & 16                         & 9                    & 0m0.000s            &                8     & 50m34.516s            \\ \hline
+4             & 1000                         & 5939                    & 0m8.232s            &                    n/a & n/a            \\ \hline
+\end{tabular}
+\end{table}
+
+  {\paragraph{} O {\it Branch and Bound} já era esperado ser mais devagar que o {\it Beam Search}, uma vez que este está incluído naquele. Todavia, o {\it Branch and Bound} é uma função com complexidade temporal O(n!), sendo inviável para lidar com várias dezenas de trabalhos a serem ordenados, apesar de garantir o melhor resultado possível. Por outro lado, o {\it Beam Search} possui complexidade polinomial, sendo útil para sequenciar até mesmo milhares de {\it jobs}, apesar de não retornar o melhor sequenciamento possível. }
+  {\paragraph{} Também é importante observar que, mesmo que os custos das sequências retornados pelos algoritmos sejam iguais, as sequências não são necessariamente as mesmas, podendo ocorrer ordenações distintas que resultem em um mesmo custo. }
+  
+ \newpage
+ \section{Conclusão}
+  {\paragraph{} Durante o processo de análise, fica clara a relação "custo X precisão" entre os dois modelos abordados: o {\it Beam Search} produz resultados rápidos porém peca na precisão da obtenção da sequência de menor custo, enquanto o {\it Least Cost Branch and Bound} fornece a impressão contrária, oferecendo resultados seguros para casos pequenos, pois para poucas dezenas de trabalhos a sua utilização torna-se inviável. }
+  {\paragraph{} Destarte, a escolha do melhor algoritmo depende de alguns fatores, isto é, a quantidade de {\it jobs}, o tempo esperado para a resposta e a ânsia de obter o melhor resultado. Em geral, em termos de escalonamento de {\it jobs} para um sistema monoprocessado, é necessário um tempo muito rápido para uma grande quantidade de processos, portanto corroborando para o uso de uma abordagem parecida com o {\it Beam Search}. No campo das dezenas de {\it jobs} o {\it Branch and Bound} é impraticável neste cenário. }
+  {\paragraph{} É válido considerar que a implementação utilizada do algoritmo do {\it Branch and Bound} também exigiu a criação do algoritmo de {\it Beam Search}, ocasionando um custo maior de desenvolvimento, o qual é outro ponto a ser destacado ao pensar em escolher um dos algoritmos para ser construído. }
+ 
+ \newpage
+ \section{Bibliografia}
+  {\paragraph{} ZIVIANI, N. Projeto de Algoritmos, Cengage Learning.}
+  {\paragraph{} \url{http://www.sanfoundry.com/cpp-program-implement-skew-heap/}}
+  {\paragraph{} Aulas ministradas pela Prof\textsuperscript{\b a} Dr\textsuperscript{\b a} Mariella Berger na disciplina de Estrutura de Dados II da Universidade Federal do Espírito Santo entre os dias 14/10/2015 e 04/11/2015. }
+ 
+\end{document}
